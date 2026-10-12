@@ -1,0 +1,27 @@
+# Build outputs and local IDE settings
+**/out/
+**/build/
+**/target/
+*.class
+**/.idea/
+*.iws
+.DS_Store
+Thumbs.db
+
+# Office lock files
+~$*
+
+# Generated pattern databases (keep metadata and generation scripts)
+*.pdb
+*.pdb.bin
+data/pdb/
+
+# Unity generated directories; Assets, Packages and ProjectSettings remain tracked
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+
+# Local diagnostics and runtime output
+.local/
