@@ -23,6 +23,6 @@
 
 课程原始源码与资料已保存在 `course-baseline` 标签。原始工程尚不能完整编译，也尚未实现求解器；不能使用附带的旧 `out` 文件宣称构建通过。
 
-远程地址尚未配置。组长选择 GitHub 或 Gitee 的私有仓库并邀请成员后，将地址写入协作文档。
+远程仓库为 https://github.com/1-qaz-2-wsx/ouc26-AI2 。各成员克隆同一仓库，在本人分支开发，由组长合并到main。
 
 执行诊断：在 PowerShell 中从 AI2 仓库根目录运行 `./lab1/tools/check-baseline.ps1`，或进入 lab1 后运行 `./tools/check-baseline.ps1`。脚本只转换诊断副本的编码，不改课程源码，日志存入已忽略的 `lab1/.local`。

@@ -25,3 +25,27 @@ Thumbs.db
 
 # Local diagnostic copies and backups in any lab
 **/.local/
+
+# Personal assistant/cloud settings and credentials
+**/.codex/
+**/.agents/
+**/.aws/
+**/.ssh/
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+*.pem
+*.key
+
+# Local caches, logs and editor backups
+**/__pycache__/
+**/.venv/
+**/node_modules/
+**/.vscode/
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Keep course Word/PDF documents, Java sources, test inputs and engine assets tracked.
