@@ -1,4 +1,4 @@
-# Build outputs and local IDE settings
+# Java build outputs and personal IDE settings
 **/out/
 **/build/
 **/target/
@@ -8,20 +8,20 @@
 .DS_Store
 Thumbs.db
 
-# Office lock files
+# Office temporary files
 ~$*
 
-# Generated pattern databases (keep metadata and generation scripts)
+# Generated pattern databases
 *.pdb
 *.pdb.bin
-data/pdb/
+**/data/pdb/
 
-# Unity generated directories; Assets, Packages and ProjectSettings remain tracked
+# Unity generated directories
 **/[Ll]ibrary/
 **/[Tt]emp/
 **/[Oo]bj/
 **/[Ll]ogs/
 **/[Uu]ser[Ss]ettings/
 
-# Local diagnostics and runtime output
-.local/
+# Local diagnostic copies and backups in any lab
+**/.local/

@@ -1,28 +1,26 @@
-# N-Puzzle 小组实验
+# AI2 人工智能课程小组实验
 
-本仓库保存课程资料、Java 搜索工程、小组协作约定和报告材料。开发环境为 IDEA + JDK 25，课程最终截止日期为 2026-11-09。
+本仓库由五人小组共同维护，以实验目录组织课程资料、代码、测试、可视化和报告。Git根目录为AI2，后续实验直接新增lab2、lab3等目录，使用同一个远程仓库。
 
-## 从这里开始
+## 现有实验
 
-1. 克隆仓库，在 IDEA 中打开 `WattAi`，不要将仓库根目录误当作 Java 模块。
-2. 设置 Project SDK 为 JDK 25，模块继承项目 SDK；`src` 为源目录。
-3. 阅读 `docs/协作与环境.md`、`docs/棋盘与路径接口.md`、`docs/编译问题记录.md` 和 `docs/第一阶段任务.md`。
-4. 从最新 `main` 建立或更新自己的功能分支。已有分工保存在 `repo/初始分工.md`。
+| 目录 | 内容 | 开发入口 |
+| --- | --- | --- |
+| lab1 | N-Puzzle搜索实验，最终提交研究报告 | IDEA打开 `lab1/WattAi`，JDK 25 |
 
-## 目录
+实验一先阅读 `lab1/README.md`、`lab1/docs/协作与环境.md`、`lab1/docs/棋盘与路径接口.md` 和 `lab1/docs/第一阶段任务.md`。
 
-- `WattAi/src`：课程框架与学生实现；主要开发在 `stud/g01`。
-- `WattAi/resources`：课程输入实例，保留原始文件。
-- `docs`：协作、接口与诊断记录。
-- `examples/paths`：成员 D 可独立使用的路径格式样例，属于格式测试数据，不是求解器实测结果。
-- `tools`：可重复的诊断工具。
-- `repo`：现有分工材料。
-- 后续可新增 `visualization`、`report/sections`、`experiments`；大型 PDB 生成文件不直接放入 Git。
+## Git规则
 
-## 当前状态
+- `main`用于整合，各成员在功能分支开发并提交合并请求。
+- 当前五个功能分支服务于lab1：feature/model、feature/astar、feature/idastar、feature/visualization-tests、feature/pdb。
+- lab2开始后从最新main建立带实验编号的分支，例如 `lab2/model`，不把lab2改动放入正在进行的lab1分支。
+- 每个实验保留自身的环境与接口说明，不默认lab2必须沿用lab1的JDK或框架。
+- 不提交编译产物、个人IDEA设置、游戏引擎缓存、Word锁文件和大型生成数据库。
+- 多人不同时修改最终Word报告；先提交个人章节，由组长合稿。
 
-课程原始源码与资料已保存在 `course-baseline` 标签。原始工程尚不能完整编译，也尚未实现求解器；不能使用附带的旧 `out` 文件宣称构建通过。
+## 历史版本
 
-远程地址尚未配置。组长选择 GitHub 或 Gitee 的私有仓库并邀请成员后，将地址写入协作文档。
+原有两次提交和 `course-baseline` 标签完整保留。标签对应迁移前的目录结构，其 `WattAi` 位于历史树根目录；迁移后的主分支位于 `lab1/WattAi`。无需重写历史。
 
-执行诊断：在 PowerShell 中从仓库根目录运行 `./tools/check-baseline.ps1`。脚本只转换诊断副本的编码，不改课程源码，日志存入已忽略的 `.local`。
+2026-10-13将仓库根从lab1迁移到AI2。远程GitHub空仓库由组长创建，真实地址确认后再配置origin并推送；目前本地准备不代表已经上传。
