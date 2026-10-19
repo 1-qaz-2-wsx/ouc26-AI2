@@ -79,9 +79,8 @@ public class PuzzleFeeder extends EngineFeeder {
      */
     @Override
     public Frontier getFrontier(EvaluationType type) {
-        return new ListFrontier(Node.evaluator(type));
+        return new stud.g01.queue.PqFrontier(Node.evaluator(type));
     }
-
     /**
      * 返回对状态进行估值的估价器（启发函数）。
      * @param type 启发函数类型
