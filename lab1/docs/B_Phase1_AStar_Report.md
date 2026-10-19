@@ -1,53 +1,43 @@
-# 成员B 第一阶段 A* 运行与测试记录
+# 成员B 第一阶段 A* 运行记录
 
-## 一、 运行环境
-- **JDK 版本**：JDK 25.0.4.1 (Oracle)
-- **操作系统**：Windows 11 10.0 amd64
-- **处理器架构**：AMD64 Family 25 Model 97 Stepping 2
-- **JVM 配置**：默认最大堆内存
-- **测试入口**：`stud.g01.runner.B_AstarTest.main`
-- **队列测试入口**：`stud.g01.runner.PqFrontierTest.main`
+运行方式：IDEA 打开 `lab1/WattAi`，运行 `core.runner.SearchTester.main`。
 
----
+运行参数：
 
-## 二、 A* 算法运行记录
-**实验目标**：验证指定两个 8-Puzzle 实例能在 1 秒内求解，且路径合法。
+```
+resources/test_8puzzle.txt NPUZZLE 1 stud.g01.runner.PuzzleFeeder
+```
 
-| case_id | initial | goal | algorithm | heuristic | status | moves | bfs_optimal | path_ok | wall_time_ms | cpu_time_ms | generated | expanded |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| spec-1 | 8 6 7 2 5 4 3 0 1 | 1 2 3 4 5 6 7 8 0 | AStar | MANHATTAN | SOLVED | 31 | 31 | true | 70.97 | N/A | N/A | N/A |
-| spec-2 | 6 4 7 8 5 0 3 2 1 | 1 2 3 4 5 6 7 8 0 | AStar | MANHATTAN | SOLVED | 31 | 31 | true | 39.86 | N/A | N/A | N/A |
-| unsolvable | 1 2 3 4 5 6 8 7 0 | 1 2 3 4 5 6 7 8 0 | AStar | MANHATTAN | UNSOLVABLE | -1 | - | - | 0.12 | N/A | N/A | N/A |
+环境：Oracle JDK 25（运行时版本 25+37-LTS-3491），Java HotSpot 64-Bit Server VM；操作系统为 Microsoft Windows 11 家庭中文版（64 位，系统版本 10.0.26200）；处理器为 Intel Core i7-14650HX（16 核、24 个逻辑处理器，标称频率 2.20 GHz）；物理内存为 16 GB。JVM 可用逻辑处理器数为 24，最大堆内存约为 4040 MiB。
 
-*(注：两个指定题目均找到了最优 31 步解。`unsolvable` 用例验证了无解拦截机制。)*
+输入文件：`resources/test_8puzzle.txt`，包含两个指定的 8-数码实例。下表使用 `0` 表示空格，棋盘按行展开。
 
-**分析结论**：
-1. 两个指定实例的求解时间分别为 `70.97 ms` 和 `39.86 ms`，远低于 `1000 ms` 的验收标准。
-2. 解路径长度均为 `31` 步，与理论最优解（`bfs_optimal`）一致，证明 A* 在有效启发函数下能找到最优路径。
-3. 对于交换了 7 和 8 的无解状态，搜索算法在初始阶段直接被 `solvable()` 方法拦截，返回 `UNSOLVABLE`，耗时仅 0.12 ms，未发生无用的状态扩展。
+| case_id | initial           | goal              |
+| ------- | ----------------- | ----------------- |
+| case-1  | 8 6 7 2 5 4 3 0 1 | 1 2 3 4 5 6 7 8 0 |
+| case-2  | 6 4 7 8 5 0 3 2 1 | 1 2 3 4 5 6 7 8 0 |
 
----
+| case_id | initial           | goal              | algorithm | heuristic | status | moves | wall_time_ms | cpu_time_ms | generated | expanded |
+| ------- | ----------------- | ----------------- | --------- | --------- | ------ | ----: | -----------: | ----------: | --------: | -------: |
+| case-1  | 8 6 7 2 5 4 3 0 1 | 1 2 3 4 5 6 7 8 0 | A*        | MISPLACED | SOLVED |    31 |     313.3200 |     296.875 |    385076 |   143848 |
+| case-2  | 6 4 7 8 5 0 3 2 1 | 1 2 3 4 5 6 7 8 0 | A*        | MISPLACED | SOLVED |    31 |     228.5057 |     218.750 |    385076 |   143848 |
+| case-1  | 8 6 7 2 5 4 3 0 1 | 1 2 3 4 5 6 7 8 0 | A*        | MANHATTAN | SOLVED |    31 |      42.1813 |      46.875 |     55925 |    21197 |
+| case-2  | 6 4 7 8 5 0 3 2 1 | 1 2 3 4 5 6 7 8 0 | A*        | MANHATTAN | SOLVED |    31 |      37.3751 |      31.250 |     55925 |    21197 |
 
-## 三、 优先队列（PqFrontier）详细单元测试
 
-**测试目标**：验证自定义优先队列的排序、去重替换、清空及边界处理逻辑。
 
-| 测试类型 | 测试步骤 | 预期结果 | 实际结果 | 是否通过 |
-| :--- | :--- | :--- | :--- | :--- |
-| **排序测试** | 打乱顺序插入 f 值为 10, 7, 8, 6 的节点 | 出队顺序为 6, 7, 8, 10 | 出队顺序为 6, 7, 8, 10 | 是 |
-| **替换与去重** | 插入状态 s1(g=5)；再插入 s1(g=3)；再插入 s1(g=7) | 接受 g=3，拒绝 g=7；先出队 g=3 | 接受 g=3，拒绝 g=7；先出队 g=3 | 是 |
-| **懒惰删除** | 在上述替换测试后再次出队 | 旧节点 g=5 被拦截剔除，返回 null | 返回 null，队列为空 | 是 |
-| **清空测试** | 插入 3 个节点后调用 `clear()` | `size()` 变为 0，`isEmpty()` 返回 true | `size()`=0，`isEmpty()`=true，且可重新入队 | 是 |
-| **边界包含** | 空队列调用 `poll()`；`contains()` 查询不同 g 值状态 | `poll()` 返回 null；`contains()` 返回 false | 返回 null / false，无空指针异常 | 是 |
+## PqFrontier 测试记录
 
-**分析结论**：
-- 测试证明了 `PqFrontier` 能严格按照启发函数评估值进行优先排序。
-- 去重逻辑利用辅助哈希表以 `State` 为键，能有效拦截代价更高（g值更大）的重复状态，并通过“懒惰删除”在 `poll()` 时剔除已被淘汰的旧节点，保证最终保留的是最优路径。
-- 辅助索引在 `clear()` 时与队列同步清空，避免了内存泄漏和脏数据。
+运行方式：运行 `stud.g01.runner.PqFrontierTest.main`。
 
----
+| 测试项      | 检查内容                                          | 检查数 | 结果 |
+| ----------- | ------------------------------------------------- | -----: | ---- |
+| Sorting     | 按 f 值升序出队，出队后成员索引及有效数量正确更新 |     31 | PASS |
+| Replacement | 同状态更优结点替换，拒绝相同或更差代价的结点      |     19 | PASS |
+| Stale-entry | 跳过堆中过期结点，返回当前有效结点                |     17 | PASS |
+| Reinsertion | 已出队状态可重新插入，旧条目不影响新条目          |     19 | PASS |
+| Clear       | 清空队列及成员索引，清空后可正常重新使用          |     26 | PASS |
+| Empty-queue | 空队列查询、重复出队及 `contains(null)` 行为正确  |     13 | PASS |
 
-## 四、 未完成事项与遗留问题
-1. **CPU 时间及结点统计缺失**：当前课程框架 `AbstractSearcher` 未暴露获取精确 CPU 时间及扩展/生成结点的公开接口（且课程规范要求不可修改 core）。为保障框架完整性，故相关字段如实记录为 `N/A`，未填估算值。
-2. **主入口未回归**：因《编译问题记录》B02（`EngineFeeder` 引入 `stud.solver.IdAStar` 报错），原主入口 `SearchTester` 暂时无法编译。已通过新建 `B_AstarTest` 独立测试类绕过验证，等待组长修复兼容类后，将回归原主入口测试。
-3. **路径导出文件未生成**：目前尚未与成员 A 的 `SolutionPathWriter` 进行代码联调，预计在下一阶段集成时导出实际路径文件给成员 D 进行可视化测试。
+测试结果：**6 组测试、125 项检查全部通过，进程退出代码为 0。**
+
