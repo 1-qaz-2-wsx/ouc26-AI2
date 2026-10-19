@@ -49,3 +49,6 @@ Thumbs.db
 *.swp
 
 # Keep course Word/PDF documents, Java sources, test inputs and engine assets tracked.
+
+# Group leader's private work records: local only, not shared on GitHub
+**/repo/工作记录/

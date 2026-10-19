@@ -21,8 +21,12 @@
 
 ## 当前状态
 
-课程原始源码与资料已保存在 `course-baseline` 标签。原始工程尚不能完整编译，也尚未实现求解器；不能使用附带的旧 `out` 文件宣称构建通过。
+课程原始源码与资料已保存在 `course-baseline` 标签。2026-10-19已完成源码UTF-8统一，正式源码编译和现有IDA*自测通过。A的基础实现与C的IDA*已整合，B的优先队列和其他模块仍须继续验收；不能使用附带的旧 `out` 文件宣称构建通过。最新诊断见 `docs/编译问题记录.md`。
 
 远程仓库为 https://github.com/1-qaz-2-wsx/ouc26-AI2 。各成员克隆同一仓库，在本人分支开发，由组长合并到main。
 
 执行诊断：在 PowerShell 中从 AI2 仓库根目录运行 `./lab1/tools/check-baseline.ps1`，或进入 lab1 后运行 `./tools/check-baseline.ps1`。脚本只转换诊断副本的编码，不改课程源码，日志存入已忽略的 `lab1/.local`。
+
+## 组长第一阶段PDB原型
+
+从AI2根目录执行 `./lab1/tools/run-pdb-prototype.ps1`，编译并运行3×3模式数据库验收和演示。IDEA也可直接运行 `stud.g01.runner.PdbPrototypeDemo`。详细原理、文件职责及验收证据见 `docs/PDB第一阶段说明.md`。这是第一阶段小规模原型，不是正式15-Puzzle数据库；生成文件写入被忽略的 `.local`，不上传。
