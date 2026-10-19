@@ -28,7 +28,7 @@ cd ouc26-AI2
 git config core.autocrlf false
 ```
 
-IDEA打开 `lab1/WattAi`，Project SDK和模块SDK设为JDK 25。原始骨架目前存在混合编码及IDA*接入问题，详见编译记录；不能以旧 `out` 文件作为编译通过的依据。
+IDEA打开 `lab1/WattAi`，Project SDK和模块SDK设为JDK 25，项目源码编码设为UTF-8。2026-10-19完成源码UTF-8统一并验证正式源码编译。同步本次更新后，组员无需再次转换源码，只需将IDEA编码设置为UTF-8。IDA*兼容接入已随成员C代码合并，后续集成问题详见编译记录；不能以旧 `out` 文件作为编译通过的依据。
 
 实验一先阅读 `lab1/README.md`、`lab1/docs/协作与环境.md`、`lab1/docs/棋盘与路径接口.md` 和 `lab1/docs/第一阶段任务.md`。
 
