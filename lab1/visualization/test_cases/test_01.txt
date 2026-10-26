@@ -1,0 +1,7 @@
+NP_PATH_V1
+size 3
+status SOLVED
+moves 0
+states 1
+goal 1 2 3 4 5 6 7 8 0
+state 0 5 0 8 4 2 1 7 3 6
