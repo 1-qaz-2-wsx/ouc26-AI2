@@ -37,20 +37,34 @@ IDEA打开 `lab1/WattAi`，Project SDK和Module SDK设为JDK25。共享配置在
 
 Hard成功后也打印独立PLAYER_INPUT目录。计时包含加载、搜索恢复、路径校验；写文件和额外复制在计时后。每次默认输出到新目录，避免旧文件冒充本次结果。
 
-## D播放器当前运行条件
+## D播放器现在如何运行
 
-本次统一入口PR提供Java求解与导出，**不包含可视化修复分支**。当前main原播放器仍有个人路径写死，暂时没有 `run-visualization.ps1`，不能直接套用修复版命令。
+播放器已支持文件/目录参数、相对路径发现、严格输入校验和可重复构建，不再使用成员个人路径。需要CMake3.24+、C++17编译器；SFML固定2.6.2。首次源码构建需要网络，代码与校验值固定，不安装系统软件。已有VS2022可使用匹配的CMake/编译环境；已有CLion但工具不在PATH时，加 `-ToolchainRoot '<CLion安装目录>'`。
 
-D在自己的修复分支完成目录/文件参数、输入校验和SFML2构建说明，让播放器读取上面的PLAYER_INPUT。已有VS2022/SFML2工程可以继续用于本机修复测试；正式代码不能依赖成员个人绝对路径。
-
-等可视化修复PR合入、仓库中存在run-visualization.ps1后，按其README构建，再在AI2根目录执行：
+在AI2根目录执行：
 
 ```powershell
-.\lab1\tools\run-visualization.ps1 -Mode Check -InputPath '<复制PLAYER_INPUT目录>'
+# 先检查解析和播放状态，不需要SFML
+.\lab1\tools\run-visualization.ps1 -Mode Test
+# 首次构建图形播放器
+.\lab1\tools\run-visualization.ps1 -Mode Build -FetchSFML
+# 校验并打开仓库中的真实求解样例
+.\lab1\tools\run-visualization.ps1 -Mode Check
+.\lab1\tools\run-visualization.ps1 -Mode Run
+```
+
+默认加载examples/paths，包含原有两个手工格式例子，以及solver前缀的五个真实求解样例：3阶、4阶、零步、无解和70步难题。来源见[路径来源](examples/paths/求解器样例来源.md)。已有匹配SFML2.6.2时可用SFML_DIR，具体见[播放器README](visualization/README.md)。
+
+测试刚由LabRunner生成的结果时，把目录替换为控制台PLAYER_INPUT：
+
+```powershell
+.\lab1\tools\run-visualization.ps1 -Mode Check -InputPath '<PLAYER_INPUT目录>'
 .\lab1\tools\run-visualization.ps1 -Mode Run -InputPath '<同一个目录>'
 ```
 
-以上两条为修复版接口，未合入修复前不可用。图形验收检查：3/4阶、多题切换、暂停/播放、单步、终点停止、零步与无解禁播；另测空文件/坏文件拒绝，保存真实截图和版本。编译与文件解析通过不替代窗口交互验收。
+左右键切题，上下键单步，空格暂停/播放，Home/End首末帧，+/-调速，Esc关闭；也有鼠标按钮。初始暂停，到目标停止，切题重置；零步和无解不播放。默认Build/Run/Check使用.local/player-build/gui；Test使用.local/player-build/parser，已有其他构建用-BuildDirectory指定。MinGW运行库自动复制到构建目录，编译产物不提交。
+
+D重点完成实际窗口验收和截图：播放/暂停、鼠标、速度、窗口缩放、零步及无解；底层解析/状态测试和已记录的单步/切题观察不替代所有界面操作验收。[修复与验收记录](docs/可视化修复与验收.md)明确列出已验证和待确认项。
 
 ## 其他最终测试
 
@@ -73,7 +87,7 @@ D在自己的修复分支完成目录/文件参数、输入校验和SFML2构建�
 | WattAi/src/stud/g01 | 棋盘、启发函数、PDB、搜索器、入口与测试 |
 | WattAi/.run | 共享IDEA配置；个人.idea不上传 |
 | WattAi/resources | 课程原题及四类联调输入 |
-| examples/paths | 原有手工格式样例，不是求解器性能证据 |
+| examples/paths | 两个手工格式样例与五个真实求解样例，来源分别记录 |
 | visualization | D的SFML播放器，当前条件见上文 |
 | tools | 最终测试、PDB实验与诊断脚本 |
 | experiments | 整理后的共享数据 |
