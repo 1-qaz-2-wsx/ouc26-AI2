@@ -16,23 +16,18 @@ public final class DisjointPatternDatabase {
     private final DensePatternTable[] tables;
 
     private DisjointPatternDatabase(PuzzleBoard goal,int[][] groups) {
-        this(goal,groups,true);
-    }
-
-    private DisjointPatternDatabase(PuzzleBoard goal,int[][] groups,boolean allocate) {
         if(goal==null||groups==null||groups.length==0) throw new IllegalArgumentException("Goal/groups required");
         this.goal=goal;
         boolean[] used=new boolean[goal.size()*goal.size()];
         tables=new DensePatternTable[groups.length];
         for(int i=0;i<groups.length;i++) {
             int[] group=groups[i];
-            int maximum=goal.size()==4?7:6;
-            if(group==null||group.length==0||group.length>maximum) throw new IllegalArgumentException("Unsupported group size");
+            if(group==null||group.length==0||group.length>5) throw new IllegalArgumentException("Group size must be 1..5");
             for(int tile:group){
                 if(tile<=0||tile>=used.length||used[tile]) throw new IllegalArgumentException("Invalid/overlapping pattern");
                 used[tile]=true;
             }
-            tables[i]=new DensePatternTable(used.length,group,allocate);
+            tables[i]=new DensePatternTable(used.length,group);
         }
         for(int tile=1;tile<used.length;tile++) if(!used[tile]) throw new IllegalArgumentException("Patterns must cover all numbered tiles");
     }
@@ -56,29 +51,6 @@ public final class DisjointPatternDatabase {
         var db=build(goal,defaults(goal)); db.save(directory); return db;
     }
 
-    /** 显式分组使用可复用v3单组缓存。已有损坏文件只报错，不静默重建。 */
-    public static DisjointPatternDatabase loadOrBuild(PuzzleBoard goal,Path directory,int[]... groups)throws IOException{
-        var db=new DisjointPatternDatabase(goal,groups,false);
-        for(int i=0;i<groups.length;i++){
-            if(Files.exists(PatternTableStore.path(goal,groups[i],directory)))
-                db.tables[i]=PatternTableStore.load(goal,groups[i],directory);
-            else{
-                long begin=System.nanoTime();
-                db.tables[i]=new DensePatternTable(goal.size()*goal.size(),groups[i]);
-                System.out.println("Building group "+Arrays.toString(groups[i])+" states="+db.tables[i].distances.length);
-                db.tables[i].build(goal);PatternTableStore.save(goal,db.tables[i],directory);
-                System.out.printf(java.util.Locale.ROOT,"Group complete ms=%.3f%n",(System.nanoTime()-begin)/1e6);
-            }
-        }
-        return db;
-    }
-
-    public static PackedPuzzleHeuristic combinedPredictor(boolean symmetry,DisjointPatternDatabase... databases){
-        return new IncrementalPdbHeuristic(symmetry,databases);
-    }
-
-    DensePatternTable[] tables(){return tables;}
-
     public int estimate(PuzzleBoard board) {
         if(board==null||board.size()!=goal.size()) throw new IllegalArgumentException("Board size mismatch");
         int[] location=DensePatternTable.locations(board);
@@ -99,10 +71,6 @@ public final class DisjointPatternDatabase {
 
     /** 单文件完整快照，先写临时文件，再替换；支持自定义分组保存/加载。 */
     public void save(Path directory) throws IOException {
-        if(Arrays.stream(tables).anyMatch(t->t.pattern.length>5)){
-            for(var table:tables)PatternTableStore.save(goal,table,directory);
-            return;
-        }
         ByteArrayOutputStream buffer=new ByteArrayOutputStream();
         try(var out=new DataOutputStream(buffer)) {
             out.writeInt(MAGIC);out.writeInt(VERSION);out.writeInt(goal.size());
@@ -131,12 +99,6 @@ public final class DisjointPatternDatabase {
 
     /** 自定义分组必须显式指定；默认load只接受默认完整分组。 */
     public static DisjointPatternDatabase load(PuzzleBoard goal,Path directory,int[]... requestedGroups) throws IOException {
-        if(Arrays.stream(requestedGroups).anyMatch(g->g!=null&&g.length>5)
-                ||!Files.exists(file(goal,directory,requestedGroups))){
-            var db=new DisjointPatternDatabase(goal,requestedGroups,false);
-            for(int i=0;i<requestedGroups.length;i++)db.tables[i]=PatternTableStore.load(goal,requestedGroups[i],directory);
-            return db;
-        }
         // 在分配读取缓冲区之前校验调用方请求。
         var db=new DisjointPatternDatabase(goal,requestedGroups);
         Path path=file(goal,directory,requestedGroups);

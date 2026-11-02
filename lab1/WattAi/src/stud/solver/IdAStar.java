@@ -20,20 +20,6 @@ import java.util.Deque;
 public class IdAStar extends AbstractSearcher {
 
     private final stud.g01.solver.IdAStar delegate;
-    public IdAStar(Frontier frontier) { this(frontier, (state, goal) -> 0); }
-    public void setNodeLimit(long limit) { delegate.setNodeLimit(limit); }
-    public void setTimeLimitMillis(long millis) { delegate.setTimeLimitMillis(millis); }
-    public void setReversePruning(boolean enabled) { delegate.setReversePruning(enabled); }
-    public void setTranspositionTable(boolean enabled, stud.g01.solver.StateHasher hasher) {
-        delegate.setTranspositionTable(enabled, hasher);
-    }
-    public void setTranspositionCapacity(int capacity) { delegate.setTranspositionCapacity(capacity); }
-    public int iterations() { return delegate.iterations(); }
-    public int lastTranspositionEntries() { return delegate.lastTranspositionEntries(); }
-    public int lastThreshold() { return delegate.lastThreshold(); }
-    public int solutionCost() { return delegate.solutionCost(); }
-    public long generatedCount() { return delegate.generatedCount(); }
-    public long expandedCount() { return delegate.expandedCount(); }
 
     public IdAStar(Frontier frontier, Predictor predictor) {
         super(frontier);
