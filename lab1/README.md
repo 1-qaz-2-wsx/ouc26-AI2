@@ -30,3 +30,9 @@
 ## 组长第一阶段PDB原型
 
 从AI2根目录执行 `./lab1/tools/run-pdb-prototype.ps1`，编译并运行3×3模式数据库验收和演示。IDEA也可直接运行 `stud.g01.runner.PdbPrototypeDemo`。详细原理、文件职责及验收证据见 `docs/PDB第一阶段说明.md`。这是第一阶段小规模原型，不是正式15-Puzzle数据库；生成文件写入被忽略的 `.local`，不上传。
+
+## 组长第二阶段正式PDB
+
+正式4×4默认5+5+5不相交PDB已提供。成员B/C接入、运行命令和当前验收边界见 [PDB第二阶段接口与验收](docs/PDB第二阶段接口与验收.md)。从AI2根目录运行 `./lab1/tools/run-pdb-phase2.ps1 -Mode Test` 验证，`-Mode Demo` 展示4×4的A*/IDA*接入，`-Mode Hard` 实测指定困难实例。数据库会在本机生成，不上传Git。
+
+实测摘要位于 [experiments/PDB第二阶段实测.md](experiments/PDB第二阶段实测.md)，组长报告初稿位于 [report/sections/PDB与BFS比较初稿.md](report/sections/PDB与BFS比较初稿.md)。当前指定困难实例60秒目标未达到，不等同第二阶段全部通过。
