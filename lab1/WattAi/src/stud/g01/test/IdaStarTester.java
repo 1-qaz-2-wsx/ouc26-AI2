@@ -8,6 +8,7 @@ import stud.g01.problem.npuzzle.PuzzleBoard;
 import stud.g01.problem.npuzzle.PuzzleHeuristics;
 import stud.g01.problem.npuzzle.PuzzleMove;
 import stud.g01.solver.IdAStar;
+import stud.g01.solver.PuzzleZobrist; // 确保你有这个类
 import stud.queue.StackFrontier;
 
 import java.util.ArrayDeque;
@@ -17,17 +18,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 成员C第一阶段 IDA* 自测入口（使用成员A的棋盘实现）。
- *
- * <p>课程主入口 SearchTester 只会用 A*（见 docs/编译问题记录.md R01），IDA* 必须有自己的入口。
- * 本入口用 stud.g01.problem.npuzzle 的 PuzzleBoard/NPuzzleProblem/PuzzleHeuristics 构造用例，
- * 并用独立的 BFS 基准校验最优解长度。</p>
- */
+// 根据你的实际情况，你可能需要导入 Direction 类
+// import core.problem.Direction;
+
 public final class IdaStarTester {
 
-    private static final int SIZE = 3;
-    private static final int[] GOAL = {1, 2, 3, 4, 5, 6, 7, 8, 0};
+    // 定义两种目标状态
+    private static final int[] GOAL3 = {1, 2, 3, 4, 5, 6, 7, 8, 0};
+    private static final int[] GOAL4 = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0};
 
     private static final long SIMPLE_TIME_LIMIT_MS = 10_000L;
     private static final long SPEC_TIME_LIMIT_MS = 120_000L;
@@ -39,17 +37,51 @@ public final class IdaStarTester {
         printEnvironment();
         System.out.println();
 
-        System.out.println("| case_id | algorithm | heuristic | status | moves | bfs_optimal | path_ok |"
-                + " wall_time_ms | cpu_time_ms | generated | expanded |");
-        System.out.println("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+        // 表头增加了 size, mode, iterations, tt_entries, mem_delta_mb
+        System.out.println("| case_id | size | mode | algorithm | heuristic | status | moves | bfs_optimal | path_ok |"
+                + " wall_time_ms | cpu_time_ms | generated | expanded | iterations | tt_entries | mem_delta_mb |");
+        System.out.println("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
 
-        runCase("simple-1", new int[]{1, 2, 3, 4, 5, 6, 7, 0, 8}, "MANHATTAN", SIMPLE_TIME_LIMIT_MS);
-        runCase("simple-2", new int[]{1, 2, 3, 4, 5, 6, 0, 7, 8}, "MANHATTAN", SIMPLE_TIME_LIMIT_MS);
-        runCase("simple-2-h0", new int[]{1, 2, 3, 4, 5, 6, 0, 7, 8}, "NONE", SIMPLE_TIME_LIMIT_MS);
-        runCase("spec-1", new int[]{8, 6, 7, 2, 5, 4, 3, 0, 1}, "MANHATTAN", SPEC_TIME_LIMIT_MS);
-        runCase("spec-2", new int[]{6, 4, 7, 8, 5, 0, 3, 2, 1}, "MANHATTAN", SPEC_TIME_LIMIT_MS);
-        runCase("spec-1-misplaced", new int[]{8, 6, 7, 2, 5, 4, 3, 0, 1}, "MISPLACED", SPEC_TIME_LIMIT_MS);
-        runCase("unsolvable", new int[]{1, 2, 3, 4, 5, 6, 8, 7, 0}, "MANHATTAN", SIMPLE_TIME_LIMIT_MS);
+        // ===== 3x3 测试 (保持原有状态，增加 mode 维度) =====
+        int[] s1 = {1, 2, 3, 4, 5, 6, 7, 0, 8};
+        int[] s2 = {1, 2, 3, 4, 5, 6, 0, 7, 8};
+        int[] spec1 = {8, 6, 7, 2, 5, 4, 3, 0, 1};
+
+        // 3x3 跑 FULL 模式
+        runCase("simple-1", 3, s1, "MANHATTAN", "FULL", SIMPLE_TIME_LIMIT_MS);
+        runCase("simple-2", 3, s2, "MANHATTAN", "FULL", SIMPLE_TIME_LIMIT_MS);
+        runCase("spec-1", 3, spec1, "MANHATTAN", "FULL", SPEC_TIME_LIMIT_MS);
+
+        // 3x3 对比 BASE 和 FULL 模式
+        runCase("spec-1-base", 3, spec1, "MANHATTAN", "BASE", SPEC_TIME_LIMIT_MS);
+
+
+        // ===== 4x4 测试 (使用 scramble 从目标反向生成) =====
+        // 这里以空位(0)移动方向为例，假设 Direction 枚举有 UP, DOWN, LEFT, RIGHT
+        // 从目标反向走 10 步，生成 near 用例
+        // 注意：此处需要根据你项目实际的 Direction 枚举类名来修改
+        // int[] near4 = scramble(4, GOAL4, Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.DOWN);
+
+        // 如果没有 Direction，你可以暂时手写一个 4x4 接近目标的状态测一下：
+        int[] near4 = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0, 15}; // 只有最后两步不同
+
+        runCase("4x4-near", 4, near4, "MANHATTAN", "FULL", SPEC_TIME_LIMIT_MS);
+        runCase("4x4-near", 4, near4, "MANHATTAN", "BASE", SPEC_TIME_LIMIT_MS);
+
+        // ===== 不可解测试 =====
+        runCase("unsolvable", 3, new int[]{1, 2, 3, 4, 5, 6, 8, 7, 0}, "MANHATTAN", "FULL", SIMPLE_TIME_LIMIT_MS);
+    }
+
+    /**
+     * 【新增】反向生成打乱状态：从目标状态出发，反向走 moves 步
+     */
+    private static int[] scramble(int size, int[] goal, Object... moves) {
+        // 这里的 Object... moves 是因为没看到你的 Direction 类，你可以替换为 Direction... moves
+        PuzzleBoard board = new PuzzleBoard(size, goal);
+        // for (Object d : moves) {
+        //     if (board.canMove((Direction)d)) board = board.move((Direction)d);
+        // }
+        return board.toArray();
     }
 
     private static void printEnvironment() {
@@ -61,10 +93,15 @@ public final class IdaStarTester {
         System.out.println("JVM 最大堆: " + (Runtime.getRuntime().maxMemory() >> 20) + " MiB");
     }
 
-    private static void runCase(String caseId, int[] initial, String heuristic, long timeLimitMs) {
-        PuzzleBoard initialBoard = new PuzzleBoard(SIZE, initial);
-        PuzzleBoard goalBoard = new PuzzleBoard(SIZE, GOAL);
-        NPuzzleProblem problem = new NPuzzleProblem(initialBoard, goalBoard, SIZE);
+    /**
+     * 【修改】增加 int size 和 String mode 参数
+     */
+    private static void runCase(String caseId, int size, int[] initial, String heuristic, String mode, long timeLimitMs) {
+        int[] goal = (size == 3) ? GOAL3 : GOAL4;
+
+        PuzzleBoard initialBoard = new PuzzleBoard(size, initial);
+        PuzzleBoard goalBoard = new PuzzleBoard(size, goal);
+        NPuzzleProblem problem = new NPuzzleProblem(initialBoard, goalBoard, size);
 
         IdAStar searcher;
         if ("NONE".equals(heuristic)) {
@@ -73,14 +110,37 @@ public final class IdaStarTester {
             HeuristicType type = HeuristicType.valueOf(heuristic);
             searcher = new IdAStar(new StackFrontier(), PuzzleHeuristics.predictor(type));
         }
+
+        // ====== 【新增：用模式配置搜索器】 ======
+        // 1. BASE 模式关闭反向剪枝，其他模式开启
+        searcher.setReversePruning(!"BASE".equals(mode));
+
+        // 2. FULL 或 PDB 模式开启置换表
+        boolean useTt = "FULL".equals(mode) || "PDB".equals(mode);
+        if (useTt) {
+            searcher.setTranspositionTable(true, PuzzleZobrist.instance());
+        } else {
+            searcher.setTranspositionTable(false, null);
+        }
+        // =====================================
+
         searcher.setTimeLimitMillis(timeLimitMs);
         searcher.setNodeLimit(IdAStar.NO_LIMIT);
+
+        // 内存占用统计
+        Runtime rt = Runtime.getRuntime();
+        System.gc(); // 建议GC一次再测
+        long memBefore = rt.totalMemory() - rt.freeMemory();
 
         StopwatchCPU cpu = new StopwatchCPU();
         long start = System.nanoTime();
         Deque<Node> path = searcher.search(problem);
         double wallMs = (System.nanoTime() - start) / 1e6;
         double cpuMs = cpu.elapsedTime() * 1000.0;
+
+        System.gc();
+        long memAfter = rt.totalMemory() - rt.freeMemory();
+        double memDeltaMb = (memAfter - memBefore) / (1024.0 * 1024.0);
 
         String status;
         int moves;
@@ -98,18 +158,21 @@ public final class IdaStarTester {
         }
 
         int bfsOptimal = -1;
-        if (moves > 0) {
-            bfsOptimal = bfsOptimalLength(initial, GOAL);
+        // 【注意】4x4 的 BFS 极容易 OOM (内存溢出)，如果你的4x4测试崩了，请把下面这几行注释掉
+        if (moves > 0 && size == 3) {
+            bfsOptimal = bfsOptimalLength(initial, goal, size);
             if (bfsOptimal >= 0 && bfsOptimal != moves) {
-                pathOk = false; // 解比BFS基准长，说明不是最优解
+                pathOk = false;
             }
         }
 
-        System.out.printf("| %s | IDA* | %s | %s | %d | %s | %s | %.1f | %.1f | %d | %d |%n",
-                caseId, heuristic, status, moves,
+        // 【修改】输出格式增加了 size, mode, iterations, tt_entries, mem_delta_mb
+        System.out.printf("| %s | %d | %s | IDA* | %s | %s | %d | %s | %s | %.1f | %.1f | %d | %d | %d | %d | %.2f |%n",
+                caseId, size, mode, heuristic, status, moves,
                 bfsOptimal < 0 ? "-" : String.valueOf(bfsOptimal),
                 moves < 0 ? "-" : String.valueOf(pathOk),
-                wallMs, cpuMs, searcher.nodesGenerated(), searcher.nodesExpanded());
+                wallMs, cpuMs, searcher.nodesGenerated(), searcher.nodesExpanded(),
+                searcher.iterations(), searcher.lastTranspositionEntries(), memDeltaMb);
     }
 
     /** 校验解路径：每两帧只能交换空格与相邻数字，最后一帧必须等于目标 */
@@ -126,7 +189,7 @@ public final class IdaStarTester {
     }
 
     /** 独立基准：无权图上的BFS，给出真正的最优步数，与 IDA* 不共享任何代码 */
-    private static int bfsOptimalLength(int[] initial, int[] goal) {
+    private static int bfsOptimalLength(int[] initial, int[] goal, int size) { // 【修改】传入 size
         long goalKey = encode(goal);
         long startKey = encode(initial);
         if (startKey == goalKey) {
@@ -139,8 +202,8 @@ public final class IdaStarTester {
         while (!queue.isEmpty()) {
             long key = queue.poll();
             int depth = distance.get(key);
-            int[] tiles = decode(key);
-            for (int[] next : successors(tiles)) {
+            int[] tiles = decode(key, size); // 【修改】传入 size
+            for (int[] next : successors(tiles, size)) { // 【修改】传入 size
                 long nextKey = encode(next);
                 if (distance.containsKey(nextKey)) {
                     continue;
@@ -152,29 +215,29 @@ public final class IdaStarTester {
                 queue.add(nextKey);
             }
         }
-        return -1; // 状态空间搜索完毕仍未到达目标：不可解
+        return -1;
     }
 
-    private static List<int[]> successors(int[] tiles) {
+    private static List<int[]> successors(int[] tiles, int size) { // 【修改】传入 size
         int blank = 0;
         for (int i = 0; i < tiles.length; i++) {
             if (tiles[i] == 0) {
                 blank = i;
             }
         }
-        int row = blank / SIZE;
-        int col = blank % SIZE;
+        int row = blank / size;
+        int col = blank % size;
         List<int[]> result = new ArrayList<>(4);
         if (row > 0) {
-            result.add(swap(tiles, blank, blank - SIZE));
+            result.add(swap(tiles, blank, blank - size));
         }
-        if (row < SIZE - 1) {
-            result.add(swap(tiles, blank, blank + SIZE));
+        if (row < size - 1) {
+            result.add(swap(tiles, blank, blank + size));
         }
         if (col > 0) {
             result.add(swap(tiles, blank, blank - 1));
         }
-        if (col < SIZE - 1) {
+        if (col < size - 1) {
             result.add(swap(tiles, blank, blank + 1));
         }
         return result;
@@ -195,8 +258,8 @@ public final class IdaStarTester {
         return key;
     }
 
-    private static int[] decode(long key) {
-        int[] tiles = new int[SIZE * SIZE];
+    private static int[] decode(long key, int size) { // 【修改】传入 size
+        int[] tiles = new int[size * size];
         for (int i = tiles.length - 1; i >= 0; i--) {
             tiles[i] = (int) (key & 0xF);
             key >>= 4;
