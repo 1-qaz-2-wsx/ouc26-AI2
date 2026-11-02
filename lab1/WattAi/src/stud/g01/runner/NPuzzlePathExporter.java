@@ -2,9 +2,11 @@ package stud.g01.runner;
 
 import core.problem.Problem;
 import core.solver.algorithm.heuristic.HeuristicType;
-import core.solver.algorithm.searcher.AbstractSearcher;
 import core.solver.queue.Node;
 import stud.g01.problem.npuzzle.NPuzzleProblem;
+import stud.g01.problem.npuzzle.PuzzleHeuristics;
+import stud.g01.solver.IdAStar;
+import stud.queue.StackFrontier;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,17 +17,22 @@ import java.util.List;
 
 /**
  * 测试入口：读取问题文件，对每个问题求解并导出 NP_PATH_V1 解路径文件。
- * 用法（在 WattAi 工程根目录下运行，工作目录为 WattAi）：
  *   java stud.g01.runner.NPuzzlePathExporter <问题文件> [输出目录]
  * 说明：
  *   - 问题文件每行格式与 PuzzleFeeder 一致（边长 + 初始 + 目标）；
  *   - 输出目录缺省为 examples/paths_out；
  *   - 每个问题导出为 npuzzle_N.txt（N 从 1 开始）；
- *   - 可解问题用 A*（曼哈顿距离）求最优解后写 SOLVED；
+ *   - 可解问题用 IDA*（曼哈顿距离）求最优解后写 SOLVED；
+ *   - 求解设 60 秒 / 200 万结点上限：超时或超限记 TIMEOUT 并跳过，绝不写成 UNSOLVABLE；
  *   - 不可解问题写 UNSOLVABLE。
 
  */
 public class NPuzzlePathExporter {
+
+    /** 单个问题的求解时间上限（毫秒）：防止深层 4×4 让入口永久挂住 */
+    private static final long TIME_LIMIT_MS = 60_000L;
+    /** 单个问题的生成结点上限 */
+    private static final long NODE_LIMIT = 2_000_000L;
 
     public static void main(String[] args) throws Exception {
         if (args.length < 1) {
@@ -49,11 +56,16 @@ public class NPuzzlePathExporter {
                 continue;
             }
 
-            AbstractSearcher searcher = feeder.getAStar(HeuristicType.MANHATTAN);
+            // 直接用本组的 IdAStar：EngineFeeder.getIdaStar 返回的是框架旧类，不能强转
+            IdAStar searcher = new IdAStar(new StackFrontier(),
+                    PuzzleHeuristics.predictor(HeuristicType.MANHATTAN));
+            searcher.setTimeLimitMillis(TIME_LIMIT_MS);
+            searcher.setNodeLimit(NODE_LIMIT);
             Deque<Node> path = searcher.search(problem);
             if (path == null) {
-                // 可解但搜索未得到路径：按约定不导出伪造路径
-                System.out.println("问题 " + (i + 1) + "：搜索失败（不应发生），不导出。"
+                // 中断记 TIMEOUT，可解却搜不到记失败；两种情况都不导出伪造路径
+                String reason = searcher.aborted() ? "TIMEOUT" : "搜索失败";
+                System.out.println("问题 " + (i + 1) + "：" + reason + "，不导出。"
                         + "生成结点=" + searcher.nodesGenerated() + "，扩展结点=" + searcher.nodesExpanded());
                 continue;
             }

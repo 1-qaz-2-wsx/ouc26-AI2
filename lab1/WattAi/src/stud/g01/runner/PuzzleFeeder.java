@@ -10,7 +10,6 @@ import core.solver.queue.Node;
 import stud.g01.problem.npuzzle.NPuzzleProblem;
 import stud.g01.problem.npuzzle.PuzzleBoard;
 import stud.g01.problem.npuzzle.PuzzleHeuristics;
-import stud.queue.ListFrontier;
 
 import java.util.ArrayList;
 
@@ -73,7 +72,8 @@ public class PuzzleFeeder extends EngineFeeder {
 
     /**
      * 生成按指定规则排序的搜索队列（Frontier）。
-     * 第一阶段先用框架自带的 ListFrontier（按 f=g+h 排序即可用 A*）。
+     * 使用本组实现的优先队列 PqFrontier：best-g 模式下同一状态只保留 g 最小的结点，
+     * 被替换的旧结点留在堆中、出队时惰性丢弃。
      * @param type 结点估值规则（FULL 表示 f = g + h）
      * @return 一个 Frontier 实例
      */
