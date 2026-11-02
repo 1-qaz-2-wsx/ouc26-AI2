@@ -1,17 +1,17 @@
 package stud.g01.solver;
 
 import core.problem.Problem;
+import core.problem.State;
 import core.solver.algorithm.heuristic.Predictor;
 import core.solver.algorithm.searcher.AbstractSearcher;
 import core.solver.queue.Frontier;
 import core.solver.queue.Node;
 
 import java.util.Deque;
-import java.util.Map;       // [新增] 为使用 Map
-import java.util.HashMap;   // [新增] 为使用 HashMap
 
 /**
  * IDA*（Iterative Deepening A*，迭代加深的A*）原型。
+ * 保留成员C a81d58c 的可选反向剪枝/置换表API；组长接手修复碰撞、容量、时钟与统计。
  *
  * <p>算法流程：每轮只在 f(n)=g(n)+h(n) &lt;= limit 的范围内做深度优先搜索；
  * 如果这一轮越过了目标，就说明当前 limit 下的解已经找到（h 可采纳时该解最优）；
@@ -33,9 +33,6 @@ public class IdAStar extends AbstractSearcher {
     /** 不限制结点数或时间 */
     public static final long NO_LIMIT = -1L;
 
-    /** 每展开多少个结点检查一次系统时钟，避免在热循环里反复取时间 */
-    private static final int TIME_CHECK_INTERVAL = 2048;
-
     private final Predictor predictor;
 
     private long nodeLimit = NO_LIMIT;
@@ -49,6 +46,39 @@ public class IdAStar extends AbstractSearcher {
     // 递归过程中共享的搜索上下文
     private Problem currentProblem;
     private Node currentGoal;
+    private boolean reversePruning = true;
+    private boolean transpositionEnabled;
+    private StateHasher stateHasher;
+    private int transpositionCapacity = 65536;
+    private Map<StateKey, Integer> bestCostByState;
+    private int lastTranspositionEntries;
+    private int iterations;
+    private long generatedCount, expandedCount;
+
+    /** States must remain immutable during a search. Hash is only a bucket selector. */
+    private record StateKey(long hash, State state) {
+        @Override public int hashCode() { return Long.hashCode(hash); }
+        @Override public boolean equals(Object other) {
+            return other instanceof StateKey k && hash == k.hash && state.equals(k.state);
+        }
+    }
+    public void setReversePruning(boolean enabled) { reversePruning = enabled; }
+    public void setTranspositionTable(boolean enabled, StateHasher hasher) {
+        if (enabled && hasher == null) throw new IllegalArgumentException("StateHasher required");
+        transpositionEnabled = enabled;
+        stateHasher = hasher;
+    }
+    /** FIFO eviction only removes pruning information; it cannot introduce false matches. */
+    public void setTranspositionCapacity(int capacity) {
+        if (capacity < 1) throw new IllegalArgumentException("capacity must be positive");
+        transpositionCapacity = capacity;
+    }
+    public int iterations() { return iterations; }
+    public int lastTranspositionEntries() { return lastTranspositionEntries; }
+    public long generatedCount() { return generatedCount; }
+    public long expandedCount() { return expandedCount; }
+    @Override public int nodesGenerated() { return (int)Math.min(Integer.MAX_VALUE, generatedCount); }
+    @Override public int nodesExpanded() { return (int)Math.min(Integer.MAX_VALUE, expandedCount); }
 
     // ================== 【新增的字段】 ==================
     private boolean reversePruning = true;                  // 反向移动剪枝，默认开
@@ -136,6 +166,15 @@ public class IdAStar extends AbstractSearcher {
         nodesExpanded = 0;
         solutionCost = -1;
         aborted = false;
+        threshold = 0;
+        generatedCount = expandedCount = 0;
+        iterations = lastTranspositionEntries = 0;
+        bestCostByState = null;
+
+        // One monotonic deadline covers solvability, root construction and every iteration.
+        long budget = timeLimitMillis < 0 ? Long.MAX_VALUE
+                : (timeLimitMillis > Long.MAX_VALUE / 1_000_000L ? Long.MAX_VALUE : timeLimitMillis * 1_000_000L);
+        deadline = System.nanoTime() + budget;
 
         // [新增] 每次搜索重置迭代次数与置换表统计
         iterations = 0;
@@ -143,29 +182,20 @@ public class IdAStar extends AbstractSearcher {
         bestCostByState = null;
 
         if (!problem.solvable()) {
+            isAborted();
             return null;
         }
 
         currentProblem = problem;
-        deadline = timeLimitMillis == NO_LIMIT
-                ? Long.MAX_VALUE
-                : System.currentTimeMillis() + timeLimitMillis;
-
-        Node root = problem.root(predictor);
-        int limit = root.evaluation(); // 初始阈值取 h(初始状态)
-        threshold = limit;
-
         try {
+            Node root = problem.root(predictor);
+            int limit = root.evaluation();
+            threshold = limit;
             while (true) {
                 currentGoal = null;
 
-                // [新增] 增加迭代次数，并在每一轮阈值开始时新建置换表
-                iterations++;
-                if (transpositionEnabled) {
-                    bestCostByState = new HashMap<>();
-                }
-
                 int next = searchWithinThreshold(root, limit);
+                if (bestCostByState != null) lastTranspositionEntries = bestCostByState.size();
 
                 // [新增] 本轮结束后记录置换表的大小
                 if (transpositionEnabled && bestCostByState != null) {
@@ -188,6 +218,7 @@ public class IdAStar extends AbstractSearcher {
         } finally {
             currentProblem = null;
             currentGoal = null;
+            bestCostByState = null;
         }
     }
 
@@ -197,6 +228,7 @@ public class IdAStar extends AbstractSearcher {
      * @return 本轮所有被剪掉的结点中最小的 f；不存在更大的 f 时返回 {@link Integer#MAX_VALUE}
      */
     private int searchWithinThreshold(Node node, int limit) {
+        if (isAborted()) return Integer.MAX_VALUE;
         int f = node.evaluation();
         if (f > limit) {
             return f; // 剪枝，同时把 f 作为下一轮阈值的候选
@@ -211,25 +243,11 @@ public class IdAStar extends AbstractSearcher {
             return Integer.MAX_VALUE;
         }
 
-        // ================== 【新增：置换表判断】 ==================
-        if (transpositionEnabled) {
-            long key = stateHasher.hash(node.getState());
-            Integer previous = bestCostByState.get(key);
-            if (previous != null && previous <= node.getPathCost()) {
-                return Integer.MAX_VALUE; // 同状态已用不大于当前的 g 搜过，本轮跳过
-            }
-            bestCostByState.put(key, node.getPathCost());
-        }
-        // =========================================================
-
-        nodesExpanded++;
 
         int minExceeded = Integer.MAX_VALUE;
         Node parent = node.getParent();
         for (Node child : currentProblem.childNodes(node, predictor)) {
-            nodesGenerated++;
 
-            // ================== 【修改：反向移动剪枝加入开关】 ==================
             // 反向移动剪枝：子状态与祖父状态相同，说明这一步只是把上一步撤销回去
             if (reversePruning && parent != null && child.getState().equals(parent.getState())) {
                 continue;
@@ -251,13 +269,12 @@ public class IdAStar extends AbstractSearcher {
         if (aborted) {
             return true;
         }
-        if (nodeLimit != NO_LIMIT && nodesGenerated >= nodeLimit) {
+        if (nodeLimit != NO_LIMIT && generatedCount >= nodeLimit) {
             aborted = true;
             return true;
         }
         if (timeLimitMillis != NO_LIMIT
-                && nodesExpanded % TIME_CHECK_INTERVAL == 0
-                && System.currentTimeMillis() > deadline) {
+                && System.nanoTime() - deadline >= 0) {
             aborted = true;
             return true;
         }

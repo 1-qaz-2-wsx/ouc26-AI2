@@ -3,18 +3,22 @@ package stud.g01.heuristic.pdb;
 import java.util.Arrays;
 import stud.g01.problem.npuzzle.PuzzleBoard;
 
-/** 空格+最多5个指定数字，使用部分排列排名，而不是16的幂次稀疏数组。 */
+/** 空格+最多7个指定数字；8个位置占32bit，队列再用高位保存距离。 */
 final class DensePatternTable {
     final int cells;
     final int[] pattern;
     final byte[] distances;
 
     DensePatternTable(int cells, int[] pattern) {
+        this(cells,pattern,true);
+    }
+
+    DensePatternTable(int cells, int[] pattern,boolean allocate) {
         this.cells=cells;
         this.pattern=pattern.clone();
         int count=1;
         for(int i=0;i<=pattern.length;i++) count=Math.multiplyExact(count,cells-i);
-        distances=new byte[count];
+        distances=new byte[allocate?count:0];
         Arrays.fill(distances,(byte)-1);
     }
 
@@ -25,10 +29,10 @@ final class DensePatternTable {
         return packed;
     }
 
-    private int rank(int packed) {
+    private int rank(long packed) {
         int rank=0,used=0;
         for(int i=0;i<=pattern.length;i++) {
-            int p=(packed >>> (4*i))&15;
+            int p=(int)(packed >>> (4*i))&15;
             int digit=p-Integer.bitCount(used&((1<<p)-1));
             rank=rank*(cells-i)+digit;
             used|=1<<p;
@@ -37,7 +41,11 @@ final class DensePatternTable {
     }
 
     int estimate(int[] location) {
-        int value=Byte.toUnsignedInt(distances[rank(pack(location))]);
+        return estimateKey(Integer.toUnsignedLong(pack(location)));
+    }
+
+    int estimateKey(long packed) {
+        int value=Byte.toUnsignedInt(distances[rank(packed)]);
         if(value==255) throw new IllegalStateException("PDB abstract state unreachable");
         return value;
     }
@@ -46,21 +54,22 @@ final class DensePatternTable {
         int[][] neighbors=neighbors(goal.size());
         int[] location=locations(goal);
         int root=pack(location);
-        int shift=4*(pattern.length+1),mask=(1<<shift)-1;
+        int shift=4*(pattern.length+1);
+        long mask=(1L<<shift)-1;
         LongDeque queue=new LongDeque();
-        distances[rank(root)]=0;
-        queue.add(root,false);
+        distances[rank(Integer.toUnsignedLong(root))]=0;
+        queue.add(Integer.toUnsignedLong(root),false);
         while(!queue.empty()) {
             long entry=queue.remove();
-            int packed=(int)entry&mask,distance=(int)(entry>>>shift);
-            if(distance!=Byte.toUnsignedInt(distances[rank(packed)])) continue;
+            int packed=(int)(entry&mask),distance=(int)(entry>>>shift);
+            if(distance!=Byte.toUnsignedInt(distances[rank(Integer.toUnsignedLong(packed))])) continue;
             int blank=packed&15;
             for(int neighbor:neighbors[blank]) {
                 int slot=0;
                 for(int i=1;i<=pattern.length;i++) if(((packed >>>(4*i))&15)==neighbor) {slot=i;break;}
                 int child=(packed&~15)|neighbor;
                 if(slot!=0) child=(child&~(15<<(4*slot)))|(blank<<(4*slot));
-                int candidate=distance+(slot==0?0:1),index=rank(child);
+                int candidate=distance+(slot==0?0:1),index=rank(Integer.toUnsignedLong(child));
                 if(candidate<Byte.toUnsignedInt(distances[index])) {
                     // 3x3/4x4任意可完成的抽象位置有不超过完整棋盘直径的距离。
                     if(candidate>=255) throw new IllegalStateException("Distance byte overflow");
