@@ -28,8 +28,10 @@ public final class PuzzleHeuristics {
                 return (state, goal) -> ((PuzzleBoard) state).misplaced((PuzzleBoard) goal);
             case MANHATTAN:
                 return manhattan();
+            case DISJOINT_PATTERN:
+                return new stud.g01.heuristic.pdb.CachedPdbPredictor();
             default:
-                // DISJOINT_PATTERN 等由组长提供 PDB 后接入；未实现前明确报错，避免 NPE
+                // 其他非N-Puzzle类型明确拒绝，避免返回null。
                 throw new UnsupportedOperationException("尚未实现该启发类型: " + type);
         }
     }

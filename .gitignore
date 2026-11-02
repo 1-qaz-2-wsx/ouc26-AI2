@@ -52,3 +52,9 @@ Thumbs.db
 
 # Group leader's private work records: local only, not shared on GitHub
 **/repo/工作记录/
+
+# A module's raw research outputs from repository / IDEA working directories
+/stage2_records.csv
+/stage2_output/
+/lab1/WattAi/stage2_records.csv
+/lab1/WattAi/stage2_output/
