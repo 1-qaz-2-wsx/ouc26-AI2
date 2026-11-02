@@ -12,7 +12,6 @@ import java.util.Deque;
 
 /**
  * 解路径导出工具：按 NP_PATH_V1 格式写出纯文本解路径文件，供成员D的可视化播放器读取。
- * 格式约定（「棋盘与路径接口.md」）：
  *   - 文件为 UTF-8 纯文本，一个文件对应一个问题；
  *   - 首行为协议头 NP_PATH_V1；
  *   - SOLVED：moves 为步数，states = moves + 1，第 0 帧为初始状态，最后一帧必须等于目标；
@@ -59,6 +58,18 @@ public final class SolutionPathWriter {
                 throw new IOException("问题可解但未得到解路径，拒绝导出伪造路径: " + output);
             }
         } else {
+            // 自检：按迭代顺序写出的最后一帧必须就是目标，否则不导出伪造路径
+            Node lastNode = null;
+            for (Node node : path) {
+                lastNode = node;
+            }
+            if (lastNode == null) {
+                if (!problem.goal(initial)) {
+                    throw new IOException("解路径为空但初始状态不是目标，拒绝导出: " + output);
+                }
+            } else if (!problem.goal(lastNode.getState())) {
+                throw new IOException("解路径末帧不是目标状态，拒绝导出伪造路径: " + output);
+            }
             sb.append("status SOLVED\n");
             sb.append("moves ").append(path.size()).append('\n');
             sb.append("states ").append(path.size() + 1).append('\n');

@@ -21,15 +21,46 @@ public class NPuzzleProblem extends Problem {
      * 由初始状态与目标状态构造问题，边长取自初始棋盘。
      */
     public NPuzzleProblem(State initialState, State goal) {
-        super(initialState, goal);
-        this.size = ((PuzzleBoard) initialState).size();
+        this(initialState, goal, boardSizeOf(initialState));
     }
 
     /**
      * 由初始状态、目标状态与边长构造问题。
+     * 校验：两状态必须是 PuzzleBoard、两棋盘边长一致、size 参数与棋盘边长一致。
      */
     public NPuzzleProblem(State initialState, State goal, int size) {
         super(initialState, goal, size);
+
+        PuzzleBoard startBoard = requireBoard(initialState, "初始状态");
+        PuzzleBoard goalBoard = requireBoard(goal, "目标状态");
+
+        if (startBoard.size() != goalBoard.size()) {
+            throw new IllegalArgumentException(
+                    "初始棋盘和目标棋盘的边长必须一致: "
+                            + startBoard.size() + " vs " + goalBoard.size()
+            );
+        }
+        if (size != startBoard.size()) {
+            throw new IllegalArgumentException(
+                    "size 参数与棋盘边长不一致: size=" + size
+                            + "，棋盘边长=" + startBoard.size()
+            );
+        }
+
+        this.size = startBoard.size();
+    }
+
+    /** 校验状态为 PuzzleBoard，否则抛 IllegalArgumentException */
+    private static PuzzleBoard requireBoard(State state, String label) {
+        if (!(state instanceof PuzzleBoard)) {
+            throw new IllegalArgumentException(label + "必须是 PuzzleBoard");
+        }
+        return (PuzzleBoard) state;
+    }
+
+    /** 从初始状态提取边长（非 PuzzleBoard 时抛 IllegalArgumentException） */
+    private static int boardSizeOf(State initialState) {
+        return requireBoard(initialState, "初始状态").size();
     }
 
     /** 返回初始棋盘（不可变） */
@@ -96,9 +127,8 @@ public class NPuzzleProblem extends Problem {
     public boolean applicable(State state, Action action) {
         PuzzleBoard board = (PuzzleBoard) state;
         Direction dir = ((PuzzleMove) action).direction();
-        int r = board.blankIndex() / size + dir.dr();
-        int c = board.blankIndex() % size + dir.dc();
-        return r >= 0 && r < size && c >= 0 && c < size;
+        // 复用棋盘自己的边界判定，避免同一规则在两处各写一遍后分叉
+        return board.canMove(dir);
     }
 
     /**
