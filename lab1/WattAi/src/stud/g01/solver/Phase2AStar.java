@@ -1,7 +1,6 @@
 package stud.g01.solver;
 
 import core.problem.Problem;
-import core.problem.State;
 import core.solver.algorithm.heuristic.Predictor;
 import core.solver.queue.EvaluationType;
 import core.solver.queue.Node;
@@ -9,43 +8,50 @@ import stud.g01.queue.PqFrontier;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * 可切换启发函数和 Open/Closed 策略的 A*。
  *
- * 实验模式：
+ * Open 和 Closed 均由 PqFrontier 统一管理。
+ * Phase2AStar 不再维护第二份 Closed。
+ *
+ * 四种实验模式：
  *
  * BASELINE：
- *     Open 不使用 best-g；
- *     Closed 只保存是否访问过。
+ *     Open best-g=false，Closed=false。
  *
  * OPEN_BEST_G：
- *     Open 使用 best-g；
- *     Closed 只保存是否访问过。
+ *     Open best-g=true，Closed=false。
  *
  * CLOSED_BEST_G：
- *     Open 不使用 best-g；
- *     Closed 保存最小 g，并支持 reopen。
+ *     Open best-g=false，Closed best-g=true。
  *
  * FULL_OPTIMIZED：
- *     Open 使用 best-g；
- *     Closed 保存最小 g，并支持 reopen。
+ *     Open best-g=true，Closed best-g=true。
  */
 public final class Phase2AStar {
 
     public enum SearchMode {
 
+        /**
+         * 不启用 Open best-g，不启用 Closed。
+         */
         BASELINE(false, false),
 
+        /**
+         * 启用 Open best-g，不启用 Closed。
+         */
         OPEN_BEST_G(true, false),
 
+        /**
+         * 不启用 Open best-g，启用 Closed best-g。
+         */
         CLOSED_BEST_G(false, true),
 
+        /**
+         * 同时启用 Open best-g 和 Closed best-g。
+         */
         FULL_OPTIMIZED(true, true);
 
         private final boolean openBestG;
@@ -65,6 +71,12 @@ public final class Phase2AStar {
 
         public boolean usesClosedBestG() {
             return closedBestG;
+        }
+
+        public PqFrontier.ClosedPolicy closedPolicy() {
+            return closedBestG
+                    ? PqFrontier.ClosedPolicy.BEST_G
+                    : PqFrontier.ClosedPolicy.NONE;
         }
     }
 
@@ -125,7 +137,9 @@ public final class Phase2AStar {
         }
 
         public int solutionLength() {
-            return path == null ? -1 : path.size();
+            return path == null
+                    ? -1
+                    : path.size();
         }
 
         public long elapsedNanos() {
@@ -201,71 +215,44 @@ public final class Phase2AStar {
                     0);
         }
 
+        /*
+         * 所有 Open/Closed 逻辑均由 PqFrontier 管理。
+         *
+         * BASELINE：
+         *     best-g=false, ClosedPolicy.NONE
+         *
+         * OPEN_BEST_G：
+         *     best-g=true, ClosedPolicy.NONE
+         *
+         * CLOSED_BEST_G：
+         *     best-g=false, ClosedPolicy.BEST_G
+         *
+         * FULL_OPTIMIZED：
+         *     best-g=true, ClosedPolicy.BEST_G
+         */
         PqFrontier open = new PqFrontier(
                 Node.evaluator(EvaluationType.FULL),
-                mode.usesOpenBestG());
-
-        Set<State> closedSet =
-                mode.usesClosedBestG()
-                        ? null
-                        : new HashSet<>();
-
-        Map<State, Integer> closedBestG =
-                mode.usesClosedBestG()
-                        ? new HashMap<>()
-                        : null;
+                mode.usesOpenBestG(),
+                mode.closedPolicy());
 
         long generated = 0;
         long expanded = 0;
-        long duplicatePruned = 0;
-        long reopened = 0;
 
-        int peakClosed = 0;
+        open.offer(problem.root(predictor));
 
-        Node root = problem.root(predictor);
-        open.offer(root);
+        Node node;
 
-        while (!open.isEmpty()) {
-            Node node = open.poll();
-
-            if (node == null) {
-                break;
-            }
-
-            State state = node.getState();
-            int nodeG = node.getPathCost();
+        /*
+         * poll() 会跳过已经失效的物理条目。
+         * 当没有有效 Open 节点时返回 null。
+         */
+        while ((node = open.poll()) != null) {
 
             /*
-             * 对于 Closed best-g：
-             *
-             * 如果当前状态已经以更小或相同的 g 被扩展，
-             * 当前结点就是重复结点，应当跳过。
+             * 目标节点不登记 Closed，
+             * 因为它不会再被扩展。
              */
-            if (mode.usesClosedBestG()) {
-                Integer closedG = closedBestG.get(state);
-
-                if (closedG != null && closedG <= nodeG) {
-                    duplicatePruned++;
-                    continue;
-                }
-            } else {
-                /*
-                 * 对于普通 Closed Set：
-                 * 状态只要扩展过一次，后续重复结点都跳过。
-                 */
-                if (closedSet.contains(state)) {
-                    duplicatePruned++;
-                    continue;
-                }
-            }
-
-            /*
-             * 目标状态必须在从 Open 取出后判断。
-             *
-             * 对于使用可采纳启发函数的 A*，
-             * 第一个从 Open 取出的目标结点是最优解。
-             */
-            if (problem.goal(state)) {
+            if (problem.goal(node.getState())) {
                 return result(
                         true,
                         true,
@@ -273,98 +260,38 @@ public final class Phase2AStar {
                         started,
                         generated,
                         expanded,
-                        duplicatePruned,
+                        open.duplicatePruned(),
                         open.staleSkipped(),
-                        reopened,
+                        open.reopened(),
                         open.peakSize(),
-                        peakClosed);
+                        open.peakClosed());
             }
 
             /*
-             * 将当前状态加入 Closed。
+             * 只有非目标节点准备扩展时，
+             * 才登记 Closed。
+             *
+             * PqFrontier 在这里统一维护 Closed，
+             * Phase2AStar 没有第二份 Closed。
              */
-            if (mode.usesClosedBestG()) {
-                closedBestG.put(state, nodeG);
+            open.markExpanded(node);
 
-                peakClosed = Math.max(
-                        peakClosed,
-                        closedBestG.size());
-            } else {
-                closedSet.add(state);
-
-                peakClosed = Math.max(
-                        peakClosed,
-                        closedSet.size());
-            }
-
-            /*
-             * 扩展当前结点。
-             */
             for (Node child
                     : problem.childNodes(node, predictor)) {
 
                 generated++;
 
-                State childState = child.getState();
-                int childG = child.getPathCost();
-
-                boolean reopenedChild = false;
-
-                /*
-                 * 先检查 Closed。
-                 */
-                if (mode.usesClosedBestG()) {
-                    Integer closedG =
-                            closedBestG.get(childState);
-
-                    if (closedG != null) {
-                        if (closedG <= childG) {
-                            /*
-                             * 已经以更小或相同代价扩展过。
-                             */
-                            duplicatePruned++;
-                            continue;
-                        }
-
-                        /*
-                         * 找到更短路径。
-                         * 移除旧 Closed 记录，允许重新进入 Open。
-                         */
-                        closedBestG.remove(childState);
-                        reopenedChild = true;
-                    }
-                } else {
-                    if (closedSet.contains(childState)) {
-                        duplicatePruned++;
-                        continue;
-                    }
-                }
-
-                /*
-                 * PqFrontier 根据 Open best-g 配置决定：
-                 *
-                 * - 是否接受相同状态的更小 g；
-                 * - 是否拒绝相同或更大的 g；
-                 * - 是否保留旧结点并延迟删除。
-                 */
-                boolean accepted = open.offer(child);
-
-                if (accepted) {
-                    if (reopenedChild) {
-                        reopened++;
-                    }
-                } else {
-                    duplicatePruned++;
+                if (!open.offer(child)) {
+                    /*
+                     * offer() 被拒绝的节点已经由 Frontier
+                     * 计入 duplicatePruned。
+                     */
                 }
             }
 
             expanded++;
         }
 
-        /*
-         * 对于可解问题，如果 Open 为空仍未找到目标，
-         * 说明搜索没有得到解。
-         */
         return result(
                 true,
                 false,
@@ -372,11 +299,11 @@ public final class Phase2AStar {
                 started,
                 generated,
                 expanded,
-                duplicatePruned,
+                open.duplicatePruned(),
                 open.staleSkipped(),
-                reopened,
+                open.reopened(),
                 open.peakSize(),
-                peakClosed);
+                open.peakClosed());
     }
 
     public Predictor predictor() {
