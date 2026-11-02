@@ -1,38 +1,90 @@
-# N-Puzzle 小组实验
+# N-Puzzle实验一 最终联调
 
-本仓库保存课程资料、Java 搜索工程、小组协作约定和报告材料。开发环境为 IDEA + JDK 25，课程最终截止日期为 2026-11-09。
+统一Java入口为 `stud.g01.runner.LabRunner`，使用JDK25、UTF-8和不超过2GiB堆。保留A/B/C已集成代码，本次不修改课程core。
 
-## 从这里开始
+## 同步与IDEA测试
 
-1. 克隆 AI2 仓库，在 IDEA 中打开 `lab1/WattAi`，不要将仓库根目录误当作 Java 模块。
-2. 设置 Project SDK 为 JDK 25，模块继承项目 SDK；`src` 为源目录。
-3. 阅读 `docs/协作与环境.md`、`docs/棋盘与路径接口.md`、`docs/编译问题记录.md` 和 `docs/第一阶段任务.md`。
-4. 在自己分支中进行任务推进，申请合并到main。已有分工保存在 `repo/初始分工.md`。
+保存个人分支工作后，同步本机main：
 
-## 目录
+```powershell
+git switch main
+git pull --ff-only origin main
+```
 
-- `WattAi/src`：课程框架与学生实现；主要开发在 `stud/g01`。
-- `WattAi/resources`：课程输入实例，保留原始文件。
-- `docs`：协作、接口与诊断记录。
-- `examples/paths`：成员 D 可独立使用的路径格式样例，属于格式测试数据，不是求解器实测结果。
-- `tools`：可重复的诊断工具。
-- `repo`：现有分工材料。
-- 后续可新增 `visualization`、`report/sections`、`experiments`；大型 PDB 生成文件不直接放入 Git。
+IDEA打开 `lab1/WattAi`，Project SDK和Module SDK设为JDK25。共享配置在 `WattAi/.run`：先运行 **01 正确性回归**，再运行 **02 准备PDB**，然后选择 **03—07** 求解并导出、**08 正式一分钟**或**09 同机比较**。VM options固定 `-Xmx2g`；工作目录为WattAi工程目录。
 
-## 当前状态
+若配置未出现，创建Application：Main class填 `stud.g01.runner.LabRunner`，模块填WattAi。参数见[最终联调与IDEA运行指南](docs/最终联调与IDEA运行指南.md)。
 
-课程原始源码与资料已保存在 `course-baseline` 标签。2026-10-19已完成源码UTF-8统一，正式源码编译和现有IDA*自测通过。A的基础实现与C的IDA*已整合，B的优先队列和其他模块仍须继续验收；不能使用附带的旧 `out` 文件宣称构建通过。最新诊断见 `docs/编译问题记录.md`。
+## D先取得真实播放文件
 
-远程仓库为 https://github.com/1-qaz-2-wsx/ouc26-AI2 。各成员克隆同一仓库，在本人分支开发，由组长合并到main。
+不需要等待A，也不要求播放器与Java实时联动。在仓库根目录AI2的PowerShell运行：
 
-执行诊断：在 PowerShell 中从 AI2 仓库根目录运行 `./lab1/tools/check-baseline.ps1`，或进入 lab1 后运行 `./tools/check-baseline.ps1`。脚本只转换诊断副本的编码，不改课程源码，日志存入已忽略的 `lab1/.local`。
+```powershell
+# 编译、求解、导出四类用例；无需PDB
+.\lab1\tools\run-final-tests.ps1 -Mode Solve -Algorithm ASTAR -Heuristic MANHATTAN
+```
 
-## 组长第一阶段PDB原型
+控制台打印 `PLAYER_INPUT=本次路径目录` 和 `RESULTS_CSV=本次结果表`。目录中的case-1至case-4.txt分别为3×3两步、4×4两步、零步、不可解，由现有搜索器实际导出并校验。播放器只读NP_PATH_V1路径txt，CSV不是路径，resources/final-smoke.txt是原始问题输入，也不能拿来播放。
 
-从AI2根目录执行 `./lab1/tools/run-pdb-prototype.ps1`，编译并运行3×3模式数据库验收和演示。IDEA也可直接运行 `stud.g01.runner.PdbPrototypeDemo`。详细原理、文件职责及验收证据见 `docs/PDB第一阶段说明.md`。这是第一阶段小规模原型，不是正式15-Puzzle数据库；生成文件写入被忽略的 `.local`，不上传。
+需要真实70步难题路径时：
 
-## 组长第二阶段正式PDB
+```powershell
+# 离线准备3阶/4阶目标PDB；已有完整缓存则加载
+.\lab1\tools\run-final-tests.ps1 -Mode Build
+# 固定原题、555及对称、TT1048576和60秒总预算
+.\lab1\tools\run-final-tests.ps1 -Mode Hard
+```
 
-正式4×4默认5+5+5不相交PDB已提供。成员B/C接入、运行命令和当前验收边界见 [PDB第二阶段接口与验收](docs/PDB第二阶段接口与验收.md)。从AI2根目录运行 `./lab1/tools/run-pdb-phase2.ps1 -Mode Test` 验证，`-Mode Demo` 展示4×4的A*/IDA*接入，`-Mode Hard` 实测指定困难实例。数据库会在本机生成，不上传Git。
+Hard成功后也打印独立PLAYER_INPUT目录。计时包含加载、搜索恢复、路径校验；写文件和额外复制在计时后。每次默认输出到新目录，避免旧文件冒充本次结果。
 
-实测摘要位于 [experiments/PDB第二阶段实测.md](experiments/PDB第二阶段实测.md)，组长报告初稿位于 [report/sections/PDB与BFS比较初稿.md](report/sections/PDB与BFS比较初稿.md)。当前指定困难实例60秒目标未达到，不等同第二阶段全部通过。
+## D播放器当前运行条件
+
+本次统一入口PR提供Java求解与导出，**不包含可视化修复分支**。当前main原播放器仍有个人路径写死，暂时没有 `run-visualization.ps1`，不能直接套用修复版命令。
+
+D在自己的修复分支完成目录/文件参数、输入校验和SFML2构建说明，让播放器读取上面的PLAYER_INPUT。已有VS2022/SFML2工程可以继续用于本机修复测试；正式代码不能依赖成员个人绝对路径。
+
+等可视化修复PR合入、仓库中存在run-visualization.ps1后，按其README构建，再在AI2根目录执行：
+
+```powershell
+.\lab1\tools\run-visualization.ps1 -Mode Check -InputPath '<复制PLAYER_INPUT目录>'
+.\lab1\tools\run-visualization.ps1 -Mode Run -InputPath '<同一个目录>'
+```
+
+以上两条为修复版接口，未合入修复前不可用。图形验收检查：3/4阶、多题切换、暂停/播放、单步、终点停止、零步与无解禁播；另测空文件/坏文件拒绝，保存真实截图和版本。编译与文件解析通过不替代窗口交互验收。
+
+## 其他最终测试
+
+```powershell
+.\lab1\tools\run-final-tests.ps1 -Mode Verify
+.\lab1\tools\run-final-tests.ps1 -Mode Solve -Algorithm ASTAR -Heuristic PDB
+.\lab1\tools\run-final-tests.ps1 -Mode Solve -Algorithm IDA -Heuristic PDB
+.\lab1\tools\run-final-tests.ps1 -Mode Solve -Algorithm PACKED_IDA -Heuristic PDB
+.\lab1\tools\run-final-tests.ps1 -Mode Compare
+.\lab1\tools\run-final-tests.ps1 -Mode Query
+```
+
+缓存统一在 `lab1/.local/leader-pdb`，结果和日志在 `lab1/.local/final-tests`。Solve和公共PDB接口只加载预建表，缺表或新目标先Build；不会在正式求解中隐式建表。普通Solve预算不代表固定Hard验收。完整参数见[运行指南](docs/最终联调与IDEA运行指南.md)，证据见[接入与验收记录](docs/统一入口接入与验收记录.md)。
+
+## 文件夹与材料
+
+| 目录 | 用途 |
+|---|---|
+| WattAi/src/core | 课程框架 |
+| WattAi/src/stud/g01 | 棋盘、启发函数、PDB、搜索器、入口与测试 |
+| WattAi/.run | 共享IDEA配置；个人.idea不上传 |
+| WattAi/resources | 课程原题及四类联调输入 |
+| examples/paths | 原有手工格式样例，不是求解器性能证据 |
+| visualization | D的SFML播放器，当前条件见上文 |
+| tools | 最终测试、PDB实验与诊断脚本 |
+| experiments | 整理后的共享数据 |
+| report/sections | 个人报告材料，最终报告由组长合稿 |
+| docs | 环境、接口、验收、工作记录与运行指南 |
+| repo | 分工与阶段安排，私人工作记录不上传 |
+
+## 历史与协作
+
+原始版本保存在course-baseline标签。旧文档中的“未接入/60秒未达标”指当时版本，以最新验收记录为准，不删除历史失败数据。
+
+[PDB第一阶段](docs/PDB第一阶段说明.md)、[第二阶段历史接口](docs/PDB第二阶段接口与验收.md)、[一分钟验收](docs/PDB一分钟验收.md)、[组长第三阶段记录](docs/组长第三阶段工作记录.md)、[分工](repo/初始分工.md)。
+
+所有变更通过开发分支、PR、验收后合并main。数据库、日志、编译产物及私人记录继续忽略；不能依据旧out目录宣称构建通过。

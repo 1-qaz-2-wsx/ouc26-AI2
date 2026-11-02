@@ -12,7 +12,8 @@ import java.util.List;
  * 构造时复制数组，返回数组也复制；一次移动产生新棋盘，不改父状态。
  *   PuzzleBoard(int size, int[] tiles)、size()、tileAt(int index)、
  *   blankIndex()、toArray()、canMove(Direction)、move(Direction)、
- *   misplaced(PuzzleBoard goal)、manhattan(PuzzleBoard goal)。
+ *   misplaced(PuzzleBoard goal)、manhattan(PuzzleBoard goal)、
+ *   goalPositions()、manhattan(int[] goalPos)、blankDistance(PuzzleBoard goal)。
  * 空格在文本显示中为 '#'。
  */
 public class PuzzleBoard extends State {
@@ -146,27 +147,60 @@ public class PuzzleBoard extends State {
      * @throws IllegalArgumentException 目标棋盘边长不同
      */
     public int manhattan(PuzzleBoard goal) {
-        if (goal.size != this.size) {
-            throw new IllegalArgumentException("目标棋盘边长不同");
+        if (goal == null || goal.size != this.size) {
+            throw new IllegalArgumentException("目标棋盘为空或边长不同");
         }
-        // 先记录每个数字在目标棋盘中的位置 goalPos[tile] = index
-        int[] goalPos = new int[size * size];
-        for (int i = 0; i < goal.tiles.length; i++) {
-            if (goal.tiles[i] != 0) {
-                goalPos[goal.tiles[i]] = i;
-            }
+        // 与 manhattan(int[]) 共用同一份实现，避免两套算法日后分叉
+        return manhattan(goal.goalPositions());
+    }
+    /**
+     * 返回"将牌数字 → 目标位置下标"的映射表，供调用方缓存后反复用于估值。
+     * 表长 size*size，下标为将牌数字；空格位置一并写入，调用方须自行跳过空格。
+     */
+    public int[] goalPositions() {
+        int[] pos = new int[size * size];
+        for (int i = 0; i < tiles.length; i++) {
+            pos[tiles[i]] = i;
         }
+        return pos;
+    }
+
+    /**
+     * 用外部缓存的"将牌 → 目标位置"映射计算曼哈顿距离。
+     * 与 manhattan(PuzzleBoard) 的返回值必须完全一致（见 IdaStarTester 全空间回归）。
+     * @param goalPos goalPositions() 的返回表
+     */
+    public int manhattan(int[] goalPos) {
         int sum = 0;
         for (int i = 0; i < tiles.length; i++) {
             int t = tiles[i];
             if (t != 0) {
-                sum += Math.abs(rowOf(i) - rowOf(goalPos[t]))
-                     + Math.abs(colOf(i) - colOf(goalPos[t]));
+                int g = goalPos[t];
+                sum += Math.abs(i / size - g / size) + Math.abs(i % size - g % size);
             }
         }
         return sum;
     }
 
+    /**
+     * 空位曼哈顿距离：当前空位到目标空位的行列距离。
+     * 该值可作为单独的下界启发信息，但不能直接与普通曼哈顿距离相加，
+     * 因为二者可能重复计算同一次移动的贡献。
+     */
+    public int blankDistance(PuzzleBoard goal) {
+        if (goal == null || goal.size != this.size) {
+            throw new IllegalArgumentException("目标棋盘为空或边长不同");
+        }
+
+        int currentRow = blankIndex / size;
+        int currentCol = blankIndex % size;
+
+        int goalRow = goal.blankIndex / size;
+        int goalCol = goal.blankIndex % size;
+
+        return Math.abs(currentRow - goalRow)
+                + Math.abs(currentCol - goalCol);
+    }
     /**
      * 在控制台按方阵显示棋盘；空格显示为 '#'。
      */
