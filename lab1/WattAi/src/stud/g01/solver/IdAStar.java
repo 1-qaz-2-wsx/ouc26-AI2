@@ -8,6 +8,8 @@ import core.solver.queue.Frontier;
 import core.solver.queue.Node;
 
 import java.util.Deque;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * IDA*（Iterative Deepening A*，迭代加深的A*）原型。
@@ -80,15 +82,6 @@ public class IdAStar extends AbstractSearcher {
     @Override public int nodesGenerated() { return (int)Math.min(Integer.MAX_VALUE, generatedCount); }
     @Override public int nodesExpanded() { return (int)Math.min(Integer.MAX_VALUE, expandedCount); }
 
-    // ================== 【新增的字段】 ==================
-    private boolean reversePruning = true;                  // 反向移动剪枝，默认开
-    private boolean transpositionEnabled;                   // 置换表，默认关（便于做对照）
-    private StateHasher stateHasher;
-    private Map<Long, Integer> bestCostByState;             // 每轮阈值重建：哈希 -> 已访问最小 g
-    private int lastTranspositionEntries;
-    private int iterations;
-    // ====================================================
-
     /**
      * @param frontier  仅用于满足框架约定，IDA* 不使用
      * @param predictor 启发函数，必须可采纳（例如曼哈顿距离），否则解的最优性没有保证
@@ -134,29 +127,6 @@ public class IdAStar extends AbstractSearcher {
         return solutionCost;
     }
 
-    // ================== 【新增的 public 方法】 ==================
-    public void setReversePruning(boolean enabled) {
-        this.reversePruning = enabled;
-    }
-
-    public void setTranspositionTable(boolean enabled, StateHasher hasher) {
-        if (enabled && hasher == null) {
-            // 补全了图片截断的异常信息
-            throw new IllegalArgumentException("启用置换表时必须提供 StateHasher");
-        }
-        this.transpositionEnabled = enabled;
-        this.stateHasher = hasher;
-    }
-
-    public int iterations() {
-        return iterations;
-    }
-
-    public int lastTranspositionEntries() {
-        return lastTranspositionEntries;
-    }
-    // ===========================================================
-
     @Override
     public Deque<Node> search(Problem problem) {
         // 允许同一个搜索对象反复使用：每次搜索前清理统计与辅助结构
@@ -176,11 +146,6 @@ public class IdAStar extends AbstractSearcher {
                 : (timeLimitMillis > Long.MAX_VALUE / 1_000_000L ? Long.MAX_VALUE : timeLimitMillis * 1_000_000L);
         deadline = System.nanoTime() + budget;
 
-        // [新增] 每次搜索重置迭代次数与置换表统计
-        iterations = 0;
-        lastTranspositionEntries = 0;
-        bestCostByState = null;
-
         if (!problem.solvable()) {
             isAborted();
             return null;
@@ -193,14 +158,10 @@ public class IdAStar extends AbstractSearcher {
             threshold = limit;
             while (true) {
                 currentGoal = null;
-
+                iterations++;
+                if (transpositionEnabled) bestCostByState = new LinkedHashMap<>();
                 int next = searchWithinThreshold(root, limit);
                 if (bestCostByState != null) lastTranspositionEntries = bestCostByState.size();
-
-                // [新增] 本轮结束后记录置换表的大小
-                if (transpositionEnabled && bestCostByState != null) {
-                    lastTranspositionEntries = bestCostByState.size();
-                }
 
                 if (currentGoal != null) {
                     solutionCost = currentGoal.getPathCost();
@@ -242,18 +203,27 @@ public class IdAStar extends AbstractSearcher {
         if (isAborted()) {
             return Integer.MAX_VALUE;
         }
-
+        if (transpositionEnabled) {
+            StateKey key = new StateKey(stateHasher.hash(node.getState()), node.getState());
+            Integer previous = bestCostByState.get(key);
+            if (previous != null && previous <= node.getPathCost()) return Integer.MAX_VALUE;
+            if (previous == null && bestCostByState.size() >= transpositionCapacity) {
+                var iterator = bestCostByState.keySet().iterator();
+                iterator.next();
+                iterator.remove();
+            }
+            bestCostByState.put(key, node.getPathCost());
+        }
+        expandedCount++;
 
         int minExceeded = Integer.MAX_VALUE;
         Node parent = node.getParent();
         for (Node child : currentProblem.childNodes(node, predictor)) {
-
+            generatedCount++;
             // 反向移动剪枝：子状态与祖父状态相同，说明这一步只是把上一步撤销回去
             if (reversePruning && parent != null && child.getState().equals(parent.getState())) {
                 continue;
             }
-            // =================================================================
-
             int exceeded = searchWithinThreshold(child, limit);
             if (currentGoal != null || aborted) {
                 return exceeded;
