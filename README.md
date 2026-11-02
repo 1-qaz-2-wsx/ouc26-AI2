@@ -2,7 +2,7 @@
 
 本仓库由五人小组共同维护，保存人工智能课程实验的资料、代码、测试与研究报告。后续实验新增 `lab2`、`lab3` 等目录，继续使用同一个仓库。
 
-实验一从[最终联调README](lab1/README.md)开始。IDEA打开 `lab1/WattAi`，使用共享运行配置；终端统一使用 `lab1/tools/run-final-tests.ps1`。D先运行Solve生成真实路径，再读取控制台的 `PLAYER_INPUT` 目录。播放器修复版是否可用及启动条件在实验一README中单独说明。
+实验一从[最终联调README](lab1/README.md)开始。IDEA打开 `lab1/WattAi`，使用共享运行配置；终端统一使用 `lab1/tools/run-final-tests.ps1`。D先运行Solve生成真实路径，再读取控制台的 `PLAYER_INPUT` 目录。播放器构建、真实路径校验和启动步骤均见实验一README。
 
 ## 文件夹说明
 
@@ -16,7 +16,7 @@
 | `lab1/WattAi/src/algs4/` | 课程提供的计时及随机数工具 |
 | `lab1/WattAi/resources/` | 课程测试输入 |
 | `lab1/docs/` | Git协作、棋盘接口、第一阶段任务及编译问题记录 |
-| `lab1/examples/paths/` | 原有手工路径格式样例；真实路径由统一入口另行导出 |
+| `lab1/examples/paths/` | 两个人工格式样例与五个实际求解样例；也可读取统一入口的新导出 |
 | `lab1/tools/` | 最终联调、PDB实验和编译诊断脚本 |
 | `lab1/WattAi/.run/` | 共享IDEA运行配置 |
 | `lab1/visualization/` | SFML播放器，运行条件见lab1/README.md |

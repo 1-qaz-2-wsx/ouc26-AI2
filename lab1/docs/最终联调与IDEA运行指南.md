@@ -47,13 +47,22 @@ A*若预算超时，生成/展开填-1表示未获得中断现场统计，不编
 
 ## D如何接可视化
 
-搜索与播放器仍通过NP_PATH_V1解耦，无需实时联动，也无需等A随机生成器才能测试。
+搜索与播放器仍通过NP_PATH_V1解耦，无需实时联动。默认播放器已包含五个solver前缀真实样例，也可以使用LabRunner新导出的文件。
 
-- 运行Solve并复制控制台PLAYER_INPUT目录，或运行Hard取得真实70步路径目录。
-- 在可视化修复PR提供 `run-visualization.ps1` 后，从仓库根运行 `.\lab1\tools\run-visualization.ps1 -Mode Check -InputPath '<PLAYER_INPUT目录>'` 校验，再用 `-Mode Run` 打开同一目录。构建按可视化README操作。本统一入口分支不包含尚未合并的播放器修复脚本，不能把两边代码混作已提交。
-- 当前main原播放器需D先完成相对/参数路径修复、输入校验和SFML2构建说明。不得把“有路径文件”或“编译成功”记成界面通过。
-- 验收3阶/4阶、多问题切换、暂停/播放、单步、到目标停止、零步与无解显示；再做空文件、截断、非法棋盘的拒绝测试。保存真实截图、版本和结果。
-- 解析器只读.txt路径，CSV是实验数据；不要把CSV或原始输入txt当成播放路径。
+在AI2根目录先构建并验证：
+
+```powershell
+.\lab1\tools\run-visualization.ps1 -Mode Test
+.\lab1\tools\run-visualization.ps1 -Mode Build -FetchSFML
+.\lab1\tools\run-visualization.ps1 -Mode Check
+.\lab1\tools\run-visualization.ps1 -Mode Run
+```
+
+需要CMake3.24+、C++17编译器；SFML固定2.6.2。已有匹配SFML可设置SFML_DIR。首次-FetchSFML需要网络；已有CLion工具链可加-ToolchainRoot。默认GUI构建目录为lab1/.local/player-build/gui。
+
+运行Solve/Hard后，将PLAYER_INPUT目录传给 `-Mode Check -InputPath '<目录>'` 和 `-Mode Run -InputPath '<目录>'`。只读NP_PATH_V1的txt，不把CSV或题目输入当播放文件。多个文件按文件名排序。
+
+验收3阶/4阶、切题、暂停/播放、单步、到目标停止、零步与无解禁播，以及空/坏文件拒绝，保存真实截图和版本。底层测试已通过，仍需签收尚未实际确认的窗口操作；见[可视化修复与验收](可视化修复与验收.md)。
 
 ## 与各成员分支的协调
 
