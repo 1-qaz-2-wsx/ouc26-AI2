@@ -34,13 +34,13 @@ public final class SearchTester {
                 Class.forName(args[3])
                         .getDeclaredConstructor().newInstance();
 
-    ////从文件读入所有输入样例的文本； args[0]：输入样例文件的相对路径
+        ////从文件读入所有输入样例的文本； args[0]：输入样例文件的相对路径
         Scanner scanner = new Scanner(new File(args[0]));
         ArrayList<String> problemLines = getProblemLines(scanner);
 
         //feeder从输入样例文本获取寻路问题的所有实例
         ArrayList<Problem> problems = feeder.getProblems(problemLines);
-    ////问题实例读入到ArrayList中
+        ////问题实例读入到ArrayList中
 
         //当前问题的类型 args[1]    寻路问题，数字推盘，野人传教士过河等
         ProblemType type = ProblemType.valueOf(args[1]);
@@ -51,9 +51,9 @@ public final class SearchTester {
         //寻路问题分别使用Grid距离和Euclid距离作为启发函数
         ArrayList<HeuristicType> heuristics = getHeuristicTypes(type, step);
 
-        for (HeuristicType heuristicType : heuristics) { 
+        for (HeuristicType heuristicType : heuristics) {
             //solveProblems方法根据不同启发函数生成不同的searcher
-            //从Feeder获取所使用的搜索引擎（AStar，IDAStar等），     
+            //从Feeder获取所使用的搜索引擎（AStar，IDAStar等），
             solveProblems(problems, feeder.getAStar(heuristicType), heuristicType);
             System.out.println();
         }
